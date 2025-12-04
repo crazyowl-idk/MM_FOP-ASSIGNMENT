@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.tron_game.main;
+package main;
 
 /**
  *
@@ -23,7 +23,9 @@ public class GamePanel extends JPanel implements Runnable{
     final int maxScreenRow=12;
     final int screenWidth=tileSize*maxScreenCol;
     final int screenHeight=tileSize*maxScreenRow;
-    
+
+    int FPS=60;
+
     Thread gameThread;//repeat program
     
     public GamePanel(){
