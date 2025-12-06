@@ -1,2 +1,0 @@
-Tron,Blue,Moderate,Balanced,The original defender of the Grid,3,1,0
-Kevin,White,Very High,Smooth,The creator - stable and resilient,3,1,0
