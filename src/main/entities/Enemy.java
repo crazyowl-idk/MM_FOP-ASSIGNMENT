@@ -1,6 +1,6 @@
 package entities;
 
-public abstract class Enemy extends Character {
+public abstract class Enemy extends Characters {
     protected double aggression;
     protected String difficulty;
     protected int xp;
