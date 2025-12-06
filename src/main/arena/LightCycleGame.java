@@ -8,9 +8,6 @@ public class LightCycleGame {
     private final LightCycle player1;
     private boolean gameOver = false;
     private Scanner scanner;
-    
-    // Player ID constants for the grid
-    private static final int PLAYER_1_WALL = 2;
 
     public LightCycleGame(ArenaType type, boolean isOpenType) {
         // 1. Initialize Arena
@@ -61,7 +58,7 @@ public class LightCycleGame {
         // 3. Collision Check
         int cellValue = arena.getCell(newX, newY);
         
-        if (cellValue == -1) { // Out of bounds
+        if (cellValue == TILE_OUT_OF_BOUNDS) { // Out of bounds
             if (arena.isOpenType()) {
                 player1.loseAllLives();
                 System.out.println("Fell off the open grid! Instant derezz.");
@@ -73,7 +70,7 @@ public class LightCycleGame {
             if (!player1.isAlive()) {
                 gameOver = true;
             }
-        } else if (cellValue == 1 || cellValue == PLAYER_1_WALL) { // Hit static wall or own jetwall
+        } else if (cellValue == TILE_STATIC_WALL || cellValue == Arena.TILE_PLAYER_1_JETWALL) { // Hit static wall or own jetwall
             player1.loseHalfLife();
             System.out.println("Hit jetwall/obstacle! (-0.5 lives)");
             if (!player1.isAlive()) {
@@ -83,7 +80,7 @@ public class LightCycleGame {
 
         // 4. Update the arena grid with the new jetwall position
         if (player1.isAlive()) {
-            arena.setCell(newX, newY, PLAYER_1_WALL);
+            arena.setCell(newX, newY, Arena.TILE_PLAYER_1_JETWALL);
         }
     }
 
@@ -99,9 +96,9 @@ public class LightCycleGame {
                 char symbol = ' ';
                 if (x == player1.getX() && y == player1.getY()) {
                     symbol = '@'; // The cycle itself
-                } else if (cell == 1) {
+                } else if (cell ==  Arena.TILE_STATIC_WALL) {
                     symbol = '#'; // Static wall/Boundary
-                } else if (cell == PLAYER_1_WALL) {
+                } else if (cell == Arena.TILE_PLAYER_1_JETWALL) {
                     symbol = '*'; // Player 1 jetwall
                 }
                 System.out.print(symbol + " ");

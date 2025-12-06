@@ -7,7 +7,7 @@ public class Characters {
     protected String speed;
     protected String handling;
     protected String description;
-    protected int lives;
+    protected double lives;
     protected int discs;
     protected int experiencePoints;
     protected int level;
@@ -19,7 +19,7 @@ public class Characters {
         this.speed = speed;
         this.handling = handling;
         this.description = description;
-        this.lives = lives; //default lives
+        this.lives = (double) lives; //default lives
         this.discs = discs; //default discs
         this.experiencePoints = experiencePoints; //default experience points
         this.level = 1; //start at level 1
@@ -107,7 +107,7 @@ public class Characters {
     //not sure yet
     public void loseLife(){
         if(this.lives > 0){
-            this.lives--;
+            this.lives-=1.0;
             System.out.println(this.name + " lost a life. Lives remaining: " + this.lives);
         } else {
             System.out.println(this.name + " has no lives left!");

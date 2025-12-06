@@ -4,6 +4,11 @@ import java.util.Random;
 public class Arena {
     private final int size = 40;
     // 0: Empty, 1: Static Wall/Boundary, 2: Player 1 Wall, 3: Player 2 Wall (etc.)
+    public static final int TILE_EMPTY = 0;
+    public static final int TILE_STATIC_WALL = 1;
+    public static final int TILE_PLAYER_1_JETWALL = 2; // Unique identifier for P1's trail
+    public static final int TILE_OUT_OF_BOUNDS = -1; // Value returned by getCell()
+
     private int[][] grid; 
     private final boolean isOpenType;
     private final Random random = new Random();
@@ -26,17 +31,17 @@ public class Arena {
         // Initialize an empty grid
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                grid[i][j] = 0;
+                grid[i][j] = grid[i][j] = TILE_EMPTY; // Use TILE_EMPTY instead of 0;
             }
         }
         
         if (!isOpenType) {
             // Add boundary walls for closed arenas
             for (int i = 0; i < size; i++) {
-                grid[0][i] = 1; // Top
-                grid[size - 1][i] = 1; // Bottom
-                grid[i][0] = 1; // Left
-                grid[i][size - 1] = 1; // Right
+                grid[0][i] = TILE_STATIC_WALL; // Top
+                grid[size - 1][i] = TILE_STATIC_WALL; // Bottom
+                grid[i][0] = TILE_STATIC_WALL; // Left
+                grid[i][size - 1] = TILE_STATIC_WALL; // Right
             }
         }
 
@@ -44,32 +49,32 @@ public class Arena {
             case PREDESIGNED_A:
                 // Simple inner box obstacle (Example)
                 for (int i = 10; i < 30; i++) {
-                    grid[10][i] = 1; 
-                    grid[29][i] = 1;
-                    grid[i][10] = 1;
-                    grid[i][29] = 1;
+                    grid[10][i] = TILE_STATIC_WALL; 
+                    grid[29][i] = TILE_STATIC_WALL;
+                    grid[i][10] = TILE_STATIC_WALL;
+                    grid[i][29] = TILE_STATIC_WALL;
                 }
                 break;
             case PREDESIGNED_B:
                 // Cross pattern obstacle (Example)
                 for (int i = 5; i < 35; i++) {
-                    grid[20][i] = 1; 
-                    grid[i][20] = 1;
+                    grid[20][i] = TILE_STATIC_WALL; 
+                    grid[i][20] = TILE_STATIC_WALL;
                 }
                 break;
             case PREDESIGNED_C:
                 // Complex design (Similar to the image provided) - Simplified Example
                 for (int i = 5; i < 35; i++) {
-                    grid[5][i] = 1;
-                    grid[34][i] = 1;
+                    grid[5][i] = TILE_STATIC_WALL;
+                    grid[34][i] = TILE_STATIC_WALL;
                 }
                 for (int i = 5; i < 15; i++) {
-                    grid[i][5] = 1;
-                    grid[i][34] = 1;
+                    grid[i][5] = TILE_STATIC_WALL;
+                    grid[i][34] = TILE_STATIC_WALL;
                 }
                 for (int i = 25; i < 35; i++) {
-                    grid[i][5] = 1;
-                    grid[i][34] = 1;
+                    grid[i][5] = TILE_STATIC_WALL;
+                    grid[i][34] = TILE_STATIC_WALL;
                 }
                 break;
             case RANDOMLY_GENERATED:
@@ -89,7 +94,7 @@ public class Arena {
 
     public int getCell(int x, int y) {
         if (x < 0 || x >= size || y < 0 || y >= size) {
-            return -1; // Out of bounds indicator
+            return TILE_OUT_OF_BOUNDS; 
         }
         return grid[y][x];
     }
