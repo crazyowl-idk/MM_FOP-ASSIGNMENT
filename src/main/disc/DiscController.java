@@ -1,192 +1,166 @@
+package disc;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator; 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.Map;
+import java.util.HashMap;
+import java.awt.Color; 
 
-/**
- * Simple 2D Vector class to handle position and velocity.
- */
+
 class Vector2 {
-    public float x;
-    public float y;
+    public float x, y;
 
-    public Vector2(float x, float y) {
-        this.x = x;
-        this.y = y;
-    }
+    public Vector2(float x, float y) { this.x = x; this.y = y; }
 
-    /** Returns a new Vector2 that is the sum of this vector and another. */
-    public Vector2 add(Vector2 other) {
-        return new Vector2(this.x + other.x, this.y + other.y);
-    }
-
-    /** Returns a new Vector2 scaled by a scalar value. */
-    public Vector2 scale(float scalar) {
-        return new Vector2(this.x * scalar, this.y * scalar);
-    }
-
-    /** Normalizes the vector (makes its length 1) for pure direction. */
+    public Vector2 add(Vector2 other) { return new Vector2(this.x + other.x, this.y + other.y); }
+    public Vector2 scale(float scalar) { return new Vector2(this.x * scalar, this.y * scalar); }
     public Vector2 normalize() {
-        float length = (float) Math.sqrt(x * x + y * y);
-        if (length != 0) {
-            return new Vector2(x / length, y / length);
-        }
-        return new Vector2(0, 0);
+        float len = (float) Math.sqrt(x*x + y*y);
+        return len != 0 ? new Vector2(x/len, y/len) : new Vector2(0,0);
     }
 }
 
-/**
- * Represents a Disc thrown by a player or bot.
- */
-public class DiscController {
 
-    private static final float DISC_SPEED = 500.0f; // Pixels per second
-    private static final float MAX_LIFETIME = 5.0f; // Seconds
+class Disc {
+    public Vector2 position;
+    public Vector2 velocity;
+    public String ownerId;
+    public boolean isTraveling = true; 
+    public Color color;
     
-    public static final float DISC_RADIUS = 10f; // Disc size for collision
+    // Stopping Logic
+    public Vector2 startPosition; 
+    public float maxDistance;
 
-    private List<Disc> activeDiscs;
-    private List<Player> gamePlayers; // List of all targets (players/bots)
-
-    public DiscController(List<Player> players) {
-        this.activeDiscs = new ArrayList<>();
-        this.gamePlayers = players;
+    public Disc(Vector2 pos, Vector2 vel, String ownerId, Color color, float maxDist) {
+        this.position = pos;
+        this.velocity = vel;
+        this.ownerId = ownerId;
+        this.color = color;
+        this.startPosition = new Vector2(pos.x, pos.y);
+        this.maxDistance = maxDist;
     }
+}
 
-    /**
-     * Getter method to expose the list of active discs to the drawing component.
-     * This is how the View gets the Model's data.
-     * @return The list of currently flying Disc objects.
-     */
-    public List<Disc> getActiveDiscs() {
-        return activeDiscs;
-    }
 
-    /**
-     * Getter method to expose the list of players to the drawing component.
-     * @return The list of players in the game.
-     */
-    public List<Player> getGamePlayers() {
-        return gamePlayers;
-    }
+class DiscController {
+    private List<Disc> activeDiscs = new ArrayList<>();
+    
+    // Constants
+    public static final float GRID_SIZE = 150.0f; 
+    private static final float DISC_SPEED = 500.0f;
+    private static final float LEFT=0, RIGHT=1000, TOP=0, BOTTOM=800, RADIUS=10;
 
-    /**
-     * Creates a new Disc and launches it into the game world.
-     * This handles the "Throwing Logic" (A) from the plan.
-     * @param owner The Player/Bot who threw the disc.
-     * @param startPos The initial position.
-     * @param direction A raw Vector2 input indicating the throw direction.
-     */
-    public void throwDisc(Player owner, Vector2 startPos, Vector2 direction) {
-        // 1. Calculate the final launch velocity (normalize direction and multiply by speed)
-        Vector2 normalizedDirection = direction.normalize();
-        Vector2 initialVelocity = normalizedDirection.scale(DISC_SPEED);
+    // --- Core Methods ---
 
-        // 2. Create the Disc object (Initialization)
-        Disc newDisc = new Disc(startPos, initialVelocity, owner.id, MAX_LIFETIME, owner.color);
-
-        // 3. Activation
-        activeDiscs.add(newDisc);
-        System.out.println("Disc thrown by " + owner.id + " at " + startPos.x + ", " + startPos.y);
-    }
-
-    /**
-     * The core game loop update for all discs.
-     * This handles the "Continuous Update Logic" (B) from the plan.
-     * @param deltaTime The time elapsed since the last frame (in seconds).
-     */
     public void update(float deltaTime) {
-        // Use an Iterator for safe removal while looping (common Java pattern)
-        Iterator<Disc> iterator = activeDiscs.iterator();
-
-        while (iterator.hasNext()) {
-            Disc disc = iterator.next();
-
-            // 1. Check Lifetime (B.3)
-            disc.lifetime -= deltaTime;
-            if (disc.lifetime <= 0) {
-                System.out.println("Disc lifetime expired. Despawned.");
-                iterator.remove(); // Safely remove the disc from the list
-                continue; // Skip the rest of the logic for this disc
-            }
-
-            // 2. Move Disc (B.2)
-            Vector2 displacement = disc.velocity.scale(deltaTime);
-            disc.position = disc.position.add(displacement);
+        Iterator<Disc> it = activeDiscs.iterator();
+        while (it.hasNext()) {
+            Disc disc = it.next();
             
-            // 3. Check Wall Collision (B.4 / C)
-            checkWallCollision(disc);
-
-            // 4. Check Player Collision (B.4 / D)
-            if (checkPlayerCollision(disc)) {
-                iterator.remove(); // Disc hit a player and must be removed
-            }
-        }
-    }
-
-    /**
-     * Handles disc interaction with the game boundaries, causing a bounce.
-     * This implements the "Wall Collision Logic" (C).
-     */
-    private void checkWallCollision(Disc disc) {
-        boolean bounced = false;
-
-        // Horizontal boundaries (Left and Right)
-        if (disc.position.x - DISC_RADIUS < LEFT_BOUNDARY) {
-            disc.velocity.x *= -1; // Reverse horizontal direction
-            // Self-Correction: Nudge the disc back into the boundary
-            disc.position.x = LEFT_BOUNDARY + DISC_RADIUS;
-            bounced = true;
-        } else if (disc.position.x + DISC_RADIUS > RIGHT_BOUNDARY) {
-            disc.velocity.x *= -1; // Reverse horizontal direction
-            disc.position.x = RIGHT_BOUNDARY - DISC_RADIUS;
-            bounced = true;
-        }
-
-        // Vertical boundaries (Top and Bottom)
-        if (disc.position.y - DISC_RADIUS < TOP_BOUNDARY) {
-            disc.velocity.y *= -1; // Reverse vertical direction
-            disc.position.y = TOP_BOUNDARY + DISC_RADIUS;
-            bounced = true;
-        } else if (disc.position.y + DISC_RADIUS > BOTTOM_BOUNDARY) {
-            disc.velocity.y *= -1; // Reverse vertical direction
-            disc.position.y = BOTTOM_BOUNDARY - DISC_RADIUS;
-            bounced = true;
-        }
-
-        if (bounced) {
-             // System.out.println("Disc bounced at: " + disc.position.x + ", " + disc.position.y);
-        }
-    }
-
-    /**
-     * Checks if the disc has hit any player or bot.
-     * This implements the "Player Collision Logic" (D).
-     * @return true if the disc hit a valid target and should be removed, false otherwise.
-     */
-    private boolean checkPlayerCollision(Disc disc) {
-        for (Player target : gamePlayers) {
-            // D.1 Hit Check: Simplified Circular Collision (Distance formula)
-            float dx = disc.position.x - target.position.x;
-            float dy = disc.position.y - target.position.y;
-            float distance = (float) Math.sqrt(dx * dx + dy * dy);
-            float minDistance = DISC_RADIUS + target.hitboxRadius;
-
-            if (distance < minDistance) {
-                // D.2 Owner Check: Ensure the disc didn't hit the player who threw it
-                if (!target.id.equals(disc.ownerId)) {
-                    // Apply damage
-                    target.takeDamage(disc.damageAmount);
-                    System.out.println("Disc hit target " + target.id + "!");
-                    return true; // Collision occurred and the disc should be removed
+            if (disc.isTraveling) {
+                // Move
+                disc.position = disc.position.add(disc.velocity.scale(deltaTime));
+                
+                // Check Distance (Stop logic)
+                float dist = (float) Math.sqrt(Math.pow(disc.position.x - disc.startPosition.x, 2) + 
+                                             Math.pow(disc.position.y - disc.startPosition.y, 2));
+                
+                if (dist >= disc.maxDistance) {
+                    disc.isTraveling = false; // Stop!
+                    disc.velocity = new Vector2(0,0);
+                } else {
+                    checkWallCollision(disc);
                 }
             }
         }
-        return false; // No collision or only hit the owner
     }
-    
 
+    // Factory method called by the AbilityManager
+    public void spawnDiscs(String ownerId, Vector2 startPos, Vector2 direction, Color color, int count, float maxDist) {
+        float spreadAngle = 30.0f;
+        float startAngle = (float) Math.toDegrees(Math.atan2(direction.y, direction.x)) - ((count-1)*spreadAngle)/2;
+
+        for(int i=0; i<count; i++) {
+            double rad = Math.toRadians(startAngle + (i*spreadAngle));
+            Vector2 vel = new Vector2((float)Math.cos(rad), (float)Math.sin(rad)).scale(DISC_SPEED);
+            activeDiscs.add(new Disc(new Vector2(startPos.x, startPos.y), vel, ownerId, color, maxDist));
+        }
+    }
+
+    public boolean tryRetrieveDisc(String ownerId, Vector2 pos, float radius) {
+        Iterator<Disc> it = activeDiscs.iterator();
+        while(it.hasNext()){
+            Disc disc = it.next();
+            if(!disc.isTraveling && disc.ownerId.equals(ownerId)) {
+                float dist = (float) Math.sqrt(Math.pow(pos.x - disc.position.x, 2) + Math.pow(pos.y - disc.position.y, 2));
+                if(dist < radius + RADIUS) {
+                    it.remove(); // Pick up
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public List<Disc> getDiscs() { return activeDiscs; }
+
+    private void checkWallCollision(Disc d) {
+        if (d.position.x < LEFT+RADIUS) { d.velocity.x *= -1; d.position.x = LEFT+RADIUS; }
+        if (d.position.x > RIGHT-RADIUS) { d.velocity.x *= -1; d.position.x = RIGHT-RADIUS; }
+        if (d.position.y < TOP+RADIUS) { d.velocity.y *= -1; d.position.y = TOP+RADIUS; }
+        if (d.position.y > BOTTOM-RADIUS) { d.velocity.y *= -1; d.position.y = BOTTOM-RADIUS; }
+    }
+}
+
+
+class DiscAbilityManager {
+    private DiscController controller;
+    
+    // Cooldown Tracker: Maps "OwnerID" -> "Last Throw Time (ms)"
+    private Map<String, Long> cooldowns = new HashMap<>();
+    private static final long COOLDOWN_MS = 5000; // 5 Seconds
+
+    public DiscAbilityManager(DiscController controller) {
+        this.controller = controller;
+    }
+
+    public boolean attemptThrow(String ownerId, String charName, int level, Vector2 pos, Vector2 facingDir) {
+        long now = System.currentTimeMillis();
+        if (cooldowns.containsKey(ownerId)) {
+            if (now - cooldowns.get(ownerId) < COOLDOWN_MS) {
+                System.out.println(ownerId + " is on cooldown!");
+                return false; // Failed to throw
+            }
+        }
+
+        int discCount = 1;
+        switch (charName.toLowerCase()) {
+            //need to wait for the character names and level to set
+            case "tron": discCount = 1; break;
+            case "kevin": discCount = 3; break;
+            default: discCount = 1; break; 
+        }
+
+        float gridUnits = (level > 5) ? 5.0f : 3.0f; //need to change according to our levelling (not in our story.txt yet)
+        float maxDistance = gridUnits * DiscController.GRID_SIZE;
+
+        Color color; // need to map ownerId to Color (if not done elsewhere)
+        switch (ownerId) {
+            case "Tron": color = Color.BLUE; break;
+            case "Kevin": color = Color.WHITE; break;
+            case "Clu": color = Color.ORANGE; break;
+            case "Rinzler": color = Color.RED; break;
+            case "Sark": color = Color.YELLOW; break;
+            case "Koura": color = Color.GREEN; break;
+            default: color = Color.BLACK; break;
+        }
+
+        controller.spawnDiscs(ownerId, pos, facingDir, color, discCount, maxDistance);
+
+        cooldowns.put(ownerId, now);
+        System.out.println(ownerId + " threw " + discCount + " discs (Dist: " + gridUnits + " grids)");
+        return true;
+    }
 }
